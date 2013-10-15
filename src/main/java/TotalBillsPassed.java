@@ -70,8 +70,10 @@ public class TotalBillsPassed {
 			}
 		}
 		zipFile.close();
+		System.out.println( "NAME" + "\t" + "CHAMBER" + "\t" + "DISTRICT" + "\t" + "PARTY" + "\t" + "BILLSCHAPTERED"  );
 		for ( PassedSponsorCount sponsorCount: passedSponsors.values() ) {
-			System.out.println( sponsorCount.legislator.fullName + "\t" + sponsorCount.count );
+			Legislator legislator = sponsorCount.legislator;
+			System.out.println( legislator.fullName + "\t" + legislator.chamber + "\t" + legislator.district + "\t" + legislator.party + "\t" + sponsorCount.count  );
 		}
 	}
 	
