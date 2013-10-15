@@ -1,6 +1,19 @@
 *.class
 
+
 # Package Files #
+
 *.jar
+
 *.war
+
 *.ear
+
+# Specifics #
+/bin
+
+/target
+
+.classpath
+.project
+.settings
