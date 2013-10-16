@@ -1,0 +1,121 @@
+NAME	CHAMBER	DISTRICT	PARTY	BILLSCHAPTERED
+Mark Leno	upper	11	Democratic	7
+Lois Wolk	upper	3	Democratic	10
+Darrell Steinberg	upper	6	Democratic	10
+Mark DeSaulnier	upper	7	Democratic	8
+Leland Yee	upper	8	Democratic	9
+Loni Hancock	upper	9	Democratic	6
+Ellen Corbett	upper	10	Democratic	12
+Carol Liu	upper	25	Democratic	13
+Fran Pavley	upper	27	Democratic	6
+Bob Huff	upper	29	Republican	1
+Mimi Walters	upper	37	Republican	2
+Mark Wyland	upper	38	Republican	4
+Alex Padilla	upper	20	Democratic	10
+Roderick Wright	upper	35	Democratic	5
+Ron Calderon	upper	30	Democratic	7
+Lou Correa	upper	34	Democratic	7
+Bill Emmerson	upper	23	Republican	6
+Dan Logue	lower	3	Republican	6
+Marty Block	upper	39	Democratic	7
+Diane L Harkey	lower	73	Republican	2
+Ed Hernandez	upper	24	Democratic	13
+Jim Beall	upper	15	Democratic	7
+Kevin De León	upper	22	Democratic	3
+Nancy Skinner	lower	15	Democratic	8
+Joan Buchanan	lower	16	Democratic	7
+Cathleen Galgiani	upper	5	Democratic	8
+Steve Knight	upper	21	Republican	3
+Ted Lieu	upper	28	Democratic	17
+Noreen Evans	upper	2	Democratic	3
+Bonnie Lowenthal	lower	70	Democratic	11
+Brian Nestande	lower	42	Republican	2
+Jerry Hill	upper	13	Democratic	12
+Paul Fong	lower	28	Democratic	1
+Tom Berryhill	upper	14	Republican	4
+Jean Fuller	upper	18	Republican	6
+Bob Blumenfield	lower	45	Democratic	3
+John Pérez	lower	53	Democratic	8
+Curt Hagman	lower	55	Republican	8
+V. Manuel Pérez	lower	56	Democratic	7
+Mariko Yamada	lower	4	Democratic	4
+Wesley Chesbro	lower	2	Democratic	6
+Ted Gaines	upper	1	Republican	4
+Tom Ammiano	lower	17	Democratic	7
+William W Monning	upper	17	Democratic	7
+Connie Conway	lower	26	Republican	0
+Steven Bradford	lower	62	Democratic	4
+Isadore Hall	lower	64	Democratic	11
+Norma Torres	lower	52	Democratic	3
+Joel Anderson	upper	36	Republican	1
+Mike Gatto	lower	43	Democratic	6
+Anthony Cannella	upper	12	Republican	4
+Richard Gordon	lower	24	Democratic	5
+Kristin Olsen	lower	12	Republican	2
+Henry Perea	lower	31	Democratic	3
+Shannon Grove	lower	34	Republican	0
+Ben Hueso	upper	40	Democratic	10
+Toni Atkins	lower	78	Democratic	4
+Brian Jones	lower	71	Republican	4
+Katcho Achadjian	lower	35	Republican	4
+Tim Donnelly	lower	33	Republican	5
+Allan Mansoor	lower	74	Republican	0
+Richard Pan	lower	9	Democratic	9
+Donald Wagner	lower	68	Republican	5
+Susan Bonilla	lower	14	Democratic	8
+Roger Hernández	lower	48	Democratic	3
+Nora Campos	lower	27	Democratic	7
+Mike Morrell	lower	40	Republican	0
+Ricardo Lara	upper	33	Democratic	4
+Das Williams	lower	37	Democratic	5
+Luis Alejo	lower	30	Democratic	8
+Jeff Gorell	lower	44	Republican	1
+Holly Mitchell	lower	54	Democratic	8
+Roger Dickinson	lower	7	Democratic	8
+Bob Wieckowski	lower	25	Democratic	8
+Beth Gaines	lower	6	Republican	4
+Hannah-Beth Jackson	upper	19	Democratic	9
+Richard D. Roth	upper	31	Democratic	4
+Travis Allen	lower	72	Republican	2
+Franklin E. Bigelow	lower	5	Republican	0
+Richard Bloom	lower	50	Democratic	5
+Raul Bocanegra	lower	39	Democratic	7
+Rob Bonta	lower	18	Democratic	6
+Cheryl R. Brown	lower	47	Democratic	3
+Ian C. Calderon	lower	57	Democratic	5
+Ed Chau	lower	49	Democratic	6
+Rocky J. Chávez	lower	76	Republican	5
+Ken Cooley	lower	8	Democratic	10
+Brian Dahle	lower	1	Republican	4
+Tom Daly	lower	69	Democratic	5
+Susan Talamantes Eggman	lower	13	Democratic	8
+Steve Fox	lower	36	Democratic	3
+Jim Frazier	lower	11	Democratic	4
+Cristina Garcia	lower	58	Democratic	3
+Jimmy Gomez	lower	51	Democratic	4
+Adam Gray	lower	21	Democratic	3
+Chris R. Holden	lower	41	Democratic	6
+"Reginald B. Jones-Sawyer, Sr."	lower	59	Democratic	10
+Marc Levine	lower	10	Democratic	6
+Eric Linder	lower	60	Republican	0
+Brian Maienschein	lower	77	Republican	2
+Jose Medina	lower	61	Democratic	3
+Melissa A. Melendez	lower	67	Republican	3
+Kevin Mullin	lower	22	Democratic	6
+Al Muratsuchi	lower	66	Democratic	6
+Adrin Nazarian	lower	46	Democratic	3
+Jim Patterson	lower	23	Republican	1
+Bill Quirk	lower	20	Democratic	4
+Sharon Quirk-Silva	lower	65	Democratic	6
+Anthony Rendon	lower	63	Democratic	1
+Rudy Salas	lower	32	Democratic	6
+Mark Stone	lower	29	Democratic	9
+Philip Y. Ting	lower	19	Democratic	7
+Marie Waldron	lower	75	Republican	3
+Shirley N. Weber	lower	79	Democratic	4
+Scott Wilk	lower	38	Republican	1
+Jim Nielsen	upper	4	Republican	1
+Norma J. Torres	upper	32	Democratic	2
+Lorena Gonzalez	lower	80	Democratic	0
+Andy Vidak	upper	16	Republican	0
+Holly Mitchell	upper	26	Democratic	0
