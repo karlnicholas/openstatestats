@@ -11,14 +11,15 @@ import net.thegreshams.openstates4j.model.Legislator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-
 public class TotalBillsPassed {
 
-	static class PassedSponsorCount {
+	static class SponsorSuccessStats {
 		int count = 0;
+		int officeScore = 0;
 		Legislator legislator;
-		PassedSponsorCount(Legislator legislator) {
+		SponsorSuccessStats(Legislator legislator, int officeScore) {
 			this.legislator = legislator;
+			this.officeScore = officeScore;
 		}
 	}
 
@@ -29,8 +30,8 @@ public class TotalBillsPassed {
 		mapper.setDateFormat( sdf );
 
 		ZipFile zipFile = new ZipFile( TotalBillsPassed.class.getResource("2013-10-07-ca-json.zip").getFile() );
-		TreeMap<String, PassedSponsorCount> passedSponsors = readLegislators(mapper, zipFile);
 		TreeMap<String, Committee> committees = readCommittees(mapper, zipFile);
+		TreeMap<String, SponsorSuccessStats> sponsorSuccess = readLegislators(mapper, zipFile, committees);
 		
 		Enumeration<? extends ZipEntry> entries = zipFile.entries();
 		while ( entries.hasMoreElements() ) {
@@ -44,15 +45,15 @@ public class TotalBillsPassed {
 					String key = determinePrincipalSponsor(bill);
 					if ( key != null ) {
 						boolean cFlag = false;
-						PassedSponsorCount sponsorCount = passedSponsors.get(key);
-						if ( sponsorCount == null ) {
-							key = findCommitteeKey(committees, key);
+						SponsorSuccessStats sponsorStats = sponsorSuccess.get(key);
+						if ( sponsorStats == null ) {
+							key = findCommitteeKey(committees, key, bill.chamber);
 							if ( key != null ) {
 								Committee committee = committees.get(key);
 								if ( committee != null ) {
 									for ( Committee.Member member: committee.members ) {
 										if ( member.role.equals("Chair")) {
-											sponsorCount = passedSponsors.get( member.legislatorId );
+											sponsorStats = sponsorSuccess.get( member.legislatorId );
 											cFlag = true;
 											break;
 										}
@@ -60,7 +61,7 @@ public class TotalBillsPassed {
 								}
 							}
 						}
-						if ( sponsorCount != null && !cFlag ) sponsorCount.count++;
+						if ( sponsorStats != null && !cFlag ) sponsorStats.count++;
 						else if ( !cFlag) System.out.println("Principal Sponsor Not Found:" + bill.sponsors );
 					} else {
 						System.out.println("Principal Sponsor Not Found:" + bill.sponsors ); 
@@ -70,17 +71,18 @@ public class TotalBillsPassed {
 			}
 		}
 		zipFile.close();
-		System.out.println( "NAME" + "\t" + "CHAMBER" + "\t" + "DISTRICT" + "\t" + "PARTY" + "\t" + "BILLSCHAPTERED"  );
-		for ( PassedSponsorCount sponsorCount: passedSponsors.values() ) {
-			Legislator legislator = sponsorCount.legislator;
-			System.out.println( legislator.fullName + "\t" + legislator.chamber + "\t" + legislator.district + "\t" + legislator.party + "\t" + sponsorCount.count  );
+		System.out.println( "NAME" + "\t" + "CHAMBER" + "\t" + "DISTRICT" + "\t" + "PARTY" + "\t" + "OFFICESCORE" + "\t" + "BILLSCHAPTERED"  );
+		for ( SponsorSuccessStats sponsorStats: sponsorSuccess.values() ) {
+			Legislator legislator = sponsorStats.legislator;
+			System.out.println( legislator.fullName + "\t" + legislator.chamber + "\t" + legislator.district + "\t" + legislator.party + "\t" + sponsorStats.officeScore + "\t" + sponsorStats.count  );
 		}
 	}
 	
-	private static String findCommitteeKey(TreeMap<String, Committee> committees, String namePart) {
+	private static String findCommitteeKey(TreeMap<String, Committee> committees, String namePart, String chamber) {
 		String key = null;
 		for ( Committee committee: committees.values() ) {
-			if ( committee.committee.contains(namePart)) return committee.id;
+			if ( namePart.contains(committee.committee) && !namePart.equals(committee.committee) ) System.out.println(namePart);
+			if ( (committee.committee.contains(namePart) || namePart.contains(committee.committee)) && (committee.chamber.equals(chamber) || committee.chamber.equals("joint")) ) return committee.id;
 		}
 		return key;
 	}
@@ -104,8 +106,8 @@ public class TotalBillsPassed {
 		return passed;
 	}
 	
-	private static TreeMap<String, PassedSponsorCount> readLegislators(ObjectMapper mapper, ZipFile zipFile) throws Exception {
-		TreeMap<String, PassedSponsorCount> legislators = new TreeMap<>();
+	private static TreeMap<String, SponsorSuccessStats> readLegislators(ObjectMapper mapper, ZipFile zipFile, TreeMap<String, Committee> committees) throws Exception {
+		TreeMap<String, SponsorSuccessStats> legislators = new TreeMap<>();
 		Enumeration<? extends ZipEntry> entries = zipFile.entries();
 		while ( entries.hasMoreElements() ) {
 			ZipEntry entry = entries.nextElement();
@@ -113,7 +115,11 @@ public class TotalBillsPassed {
 			String eName = entry.getName();
 			if ( eName.contains("legislators")) {
 				Legislator legislator = readLegislator(mapper, zipFile, entry);
-				if ( legislator.isActive ) legislators.put(legislator.id, new PassedSponsorCount(legislator));
+				
+				if ( legislator.isActive ) {
+					int officeScore = determineOfficeScore(legislator, committees);
+					legislators.put(legislator.id, new SponsorSuccessStats(legislator, officeScore));
+				}
 			}
 		}
 		return legislators;
@@ -147,6 +153,60 @@ public class TotalBillsPassed {
 	private static Committee readCommittee(ObjectMapper mapper, ZipFile zipFile, ZipEntry entry ) throws Exception {
 		Committee committee = mapper.readValue( zipFile.getInputStream(entry), Committee.class );
 		return committee;
+	}
+	
+	/**
+	 * 
+	 * Legislative Influence: Toward Theory Development through Causal Analysis
+	 * Author(s): Katherine Meyer
+	 * Source: Legislative Studies Quarterly, Vol. 5, No. 4 (Nov., 1980), pp. 563-585
+	 * Published
+	 * 
+	 * It assigned the following values to positions: Party Leader
+	 * or Whip = 5; Committee Chair and Vice Chair simultaneously on different
+	 * committees = 4; Committee Chair only = 3; two or more Committee Vice
+	 * Chairs = 2; Committee Vice Chair only = 1; and Member only = 0.
+	 * 
+	 * Added -1 if no office held
+	 * 
+	 */
+	private static int determineOfficeScore(Legislator legislator, TreeMap<String, Committee> committees) {
+		int score = -1;
+		for ( Legislator.Role role: legislator.roles ) {
+			String roleType = role.type.toLowerCase();
+			if ( role.committee != null ) {
+				String key = findCommitteeKey(committees, role.committee, legislator.chamber);
+				Committee committee = committees.get( key );
+				String nRoleType = findCommitteeRole(committee, legislator);
+				if ( nRoleType != null && nRoleType.equals("III") ) System.out.println(committee.committee); 
+				if ( nRoleType != null ) roleType = nRoleType.toLowerCase();
+			}
+			if ( roleType.contains("member")) {
+				if ( score == -1 ) score = 0;
+			}
+			else if ( roleType.equals("vice chair")) {
+				if ( score == 0 ) score = 1;
+				else if ( score == 1 ) score = 2;
+			}
+			else if ( roleType.equals("chair") ) {
+				if ( score <= 0 ) score = 3;
+				else if ( score <= 2 ) score = 4;
+			} else { 
+				// assume it's a leadership position?
+				System.out.println(legislator + ":" + role.type + ":" + roleType);
+				score = 5;
+			}
+		}
+		return score;
+		
+	}
+	
+	private static String findCommitteeRole( Committee committee, Legislator legislator ) {
+		String role = null;
+		for ( Committee.Member member: committee.members ) {
+			if ( member.legislatorId != null && member.legislatorId.equals( legislator.id) ) return member.role; 
+		}
+		return role;
 	}
 
 }
