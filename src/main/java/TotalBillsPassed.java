@@ -175,7 +175,7 @@ public class TotalBillsPassed {
 		for ( Legislator.Role role: legislator.roles ) {
 			String roleType = role.type.toLowerCase();
 			if ( role.committee != null ) {
-				String key = findCommitteeKey(committees, role.committee, legislator.chamber);
+				String key = findCommitteeKey(committees, role.committee.committee, legislator.chamber);
 				Committee committee = committees.get( key );
 				String nRoleType = findCommitteeRole(committee, legislator);
 				if ( nRoleType != null && nRoleType.equals("III") ) System.out.println(committee.committee); 
