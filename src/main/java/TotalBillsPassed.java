@@ -3,8 +3,8 @@ import java.util.TreeMap;
 
 import net.thegreshams.openstates4j.bulkdata.Bills;
 import net.thegreshams.openstates4j.bulkdata.Committees;
-import net.thegreshams.openstates4j.bulkdata.Legislature;
-import net.thegreshams.openstates4j.bulkdata.LoadState;
+import net.thegreshams.openstates4j.bulkdata.Legislators;
+import net.thegreshams.openstates4j.bulkdata.LoadBulkData;
 import net.thegreshams.openstates4j.model.Bill;
 import net.thegreshams.openstates4j.model.Committee;
 import net.thegreshams.openstates4j.model.Legislator;
@@ -24,7 +24,7 @@ public class TotalBillsPassed {
 
 	public static void main(String[] args) throws Exception {
 
-		LoadState.Load( TotalBillsPassed.class.getResource("2013-10-07-ca-json.zip").getFile(), TimeZone.getTimeZone("GMT-08:00") );
+		LoadBulkData.LoadCurrentTerm( TotalBillsPassed.class.getResource("2013-10-07-ca-json.zip").getFile(), "20132014", TimeZone.getTimeZone("GMT-08:00") );
 		TreeMap<String, AuthorSuccessStats> sponsorSuccess = readLegislators();
 		
 		for ( Bill bill: Bills.bills() ) {
@@ -39,13 +39,13 @@ public class TotalBillsPassed {
 						if ( key != null ) {
 							Committee committee = Committees.get(key);
 							if ( committee != null ) {
-								for ( Committee.Member member: committee.members ) {
-									if ( member.role.toLowerCase().equals("chair")) {
-										sponsorStats = sponsorSuccess.get( member.legislatorId );
-										cFlag = true;
-										break;
-									}
+								Legislator legislator = determineChair(committee);
+								if ( legislator != null ) {
+									sponsorStats = sponsorSuccess.get( legislator.id );
+									cFlag = true;
+									break;
 								}
+
 							}
 						}
 					}
@@ -64,7 +64,15 @@ public class TotalBillsPassed {
 			System.out.println( legislator.fullName + "\t" + legislator.chamber + "\t" + legislator.district + "\t" + legislator.party + "\t" + sponsorStats.officeScore + "\t" + sponsorStats.billCount + "\t" + sponsorStats.committeeBillCount );
 		}
 	}
-	
+
+	private static Legislator determineChair(Committee committee ) {
+		for ( Committee.Member member: committee.members ) {
+			for ( Legislator.Role role: member.legislator.roles ) {
+				if ( role.type.toLowerCase().equals("chair")) return member.legislator;
+			}
+		}
+		return null;
+	}
 	private static String determinePrincipalSponsor(Bill bill) {
 		String key = null;
 		for ( Bill.Sponsor sponsor: bill.sponsors ) {
@@ -86,7 +94,7 @@ public class TotalBillsPassed {
 	
 	private static TreeMap<String, AuthorSuccessStats> readLegislators() throws Exception {
 		TreeMap<String, AuthorSuccessStats> legislators = new TreeMap<>();
-		for ( Legislator legislator: Legislature.legislators()) {
+		for ( Legislator legislator: Legislators.legislators()) {
 			if ( legislator.isActive ) {
 				int officeScore = determineOfficeScore(legislator);
 				legislators.put(legislator.id, new AuthorSuccessStats(legislator, officeScore));
@@ -130,7 +138,7 @@ public class TotalBillsPassed {
 			}
 			else if ( roleType.equals("chair") ) {
 				if ( score <= 0 ) score = 3;
-				else if ( score <= 2 ) score = 4;
+				else if ( score == 1 || score == 2 ) score = 4;
 			} else { 
 				// assume it's a leadership position?
 				System.out.println(legislator + ":" + role.type + ":" + roleType);
@@ -144,7 +152,7 @@ public class TotalBillsPassed {
 	private static String findCommitteeRole( Committee committee, Legislator legislator ) {
 		String role = null;
 		for ( Committee.Member member: committee.members ) {
-			if ( member.legislatorId != null && member.legislatorId.equals( legislator.id) ) return member.role; 
+			if ( member.legislator.id != null && member.legislator.id.equals( legislator.id) ) return member.role; 
 		}
 		return role;
 	}
