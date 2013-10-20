@@ -14,10 +14,8 @@ public class TotalBillsPassed {
 	static class AuthorSuccessStats {
 		int billCount = 0;
 		int committeeBillCount = 0;
-		int officeScore = 0;
-		Legislator legislator;
-		AuthorSuccessStats(Legislator legislator, int officeScore) {
-			this.legislator = legislator;
+		int officeScore;
+		AuthorSuccessStats(int officeScore) {
 			this.officeScore = officeScore;
 		}
 	}
@@ -25,63 +23,58 @@ public class TotalBillsPassed {
 	public static void main(String[] args) throws Exception {
 
 		LoadBulkData.LoadCurrentTerm( TotalBillsPassed.class.getResource("2013-10-07-ca-json.zip").getFile(), "20132014", TimeZone.getTimeZone("GMT-08:00") );
-		TreeMap<String, AuthorSuccessStats> sponsorSuccess = readLegislators();
+		TreeMap<Legislator, AuthorSuccessStats> authorSuccess = readLegislators();
 		
 		for ( Bill bill: Bills.bills() ) {
 			boolean passed = determinePassed(bill);
 			if ( passed ) {
-				String key = determinePrincipalSponsor(bill);
-				if ( key != null ) {
-					boolean cFlag = false;
-					AuthorSuccessStats sponsorStats = sponsorSuccess.get(key);
-					if ( sponsorStats == null ) {
-						key = Committees.findCommitteeKey(key, bill.chamber);
-						if ( key != null ) {
-							Committee committee = Committees.get(key);
-							if ( committee != null ) {
-								Legislator legislator = determineChair(committee);
-								if ( legislator != null ) {
-									sponsorStats = sponsorSuccess.get( legislator.id );
-									cFlag = true;
-									break;
-								}
-
+				Bill.Sponsor sponsor = determinePrincipalSponsor(bill);
+				boolean cFlag = false;
+				AuthorSuccessStats authorStats = null;
+				Legislator legislator = null;
+				if ( sponsor != null && sponsor.legislatorId != null ) {
+					legislator = Legislators.get(sponsor.legislatorId);
+					if ( legislator != null ) authorStats = authorSuccess.get(legislator);
+				}
+				// here, legislator.fullName can be really a committee name
+				if ( authorStats == null && sponsor != null ) {
+					String committeId = null;
+					committeId = Committees.findCommitteeKey(sponsor.name, bill.chamber);
+					if ( committeId != null ) {
+						Committee committee = Committees.get(committeId);
+						if ( committee != null ) {
+							legislator = determineChair(committee);
+							if ( legislator != null ) {
+								authorStats = authorSuccess.get( legislator );
+								cFlag = true;
 							}
+
 						}
 					}
-					if ( sponsorStats != null && !cFlag ) sponsorStats.billCount++;
-					else if ( sponsorStats != null && cFlag ) sponsorStats.committeeBillCount++;
-					else if ( !cFlag) System.out.println("Principal Sponsor Not Found:" + bill.sponsors );
-				} else {
-					System.out.println("Principal Sponsor Not Found:" + bill.sponsors ); 
 				}
+				if ( authorStats != null && !cFlag ) authorStats.billCount++;
+				else if ( authorStats != null && cFlag ) authorStats.committeeBillCount++;
+				else if ( !cFlag) System.out.println("Principal Sponsor Not Found:" + bill.sponsors );
 			}
-			continue;
 		}
 		System.out.println( "NAME" + "\t" + "CHAMBER" + "\t" + "DISTRICT" + "\t" + "PARTY" + "\t" + "OFFICESCORE" + "\t" + "BILLS" + "\t" + "COMMITTEEBILLS"  );
-		for ( AuthorSuccessStats sponsorStats: sponsorSuccess.values() ) {
-			Legislator legislator = sponsorStats.legislator;
-			System.out.println( legislator.fullName + "\t" + legislator.chamber + "\t" + legislator.district + "\t" + legislator.party + "\t" + sponsorStats.officeScore + "\t" + sponsorStats.billCount + "\t" + sponsorStats.committeeBillCount );
+		for ( Legislator legislator: authorSuccess.keySet() ) {
+			AuthorSuccessStats authorStats = authorSuccess.get(legislator); 
+			System.out.println( legislator.fullName + "\t" + legislator.chamber + "\t" + legislator.district + "\t" + legislator.party + "\t" + authorStats.officeScore + "\t" + authorStats.billCount + "\t" + authorStats.committeeBillCount );
 		}
 	}
 
 	private static Legislator determineChair(Committee committee ) {
 		for ( Committee.Member member: committee.members ) {
-			for ( Legislator.Role role: member.legislator.roles ) {
-				if ( role.type.toLowerCase().equals("chair")) return member.legislator;
-			}
+			if ( member.role.toLowerCase().equals("chair")) return member.legislator;
 		}
 		return null;
 	}
-	private static String determinePrincipalSponsor(Bill bill) {
-		String key = null;
+	private static Bill.Sponsor determinePrincipalSponsor(Bill bill) {
 		for ( Bill.Sponsor sponsor: bill.sponsors ) {
-			if ( sponsor.type.equals("primary") ) {
-				if ( sponsor.legislatorId != null ) return sponsor.legislatorId;
-				else return sponsor.name;
-			}
+			if ( sponsor.type.toLowerCase().equals("primary") ) return sponsor;
 		}
-		return key;
+		return null;
 	}
 	
 	private static boolean determinePassed(Bill bill) {
@@ -92,12 +85,12 @@ public class TotalBillsPassed {
 		return passed;
 	}
 	
-	private static TreeMap<String, AuthorSuccessStats> readLegislators() throws Exception {
-		TreeMap<String, AuthorSuccessStats> legislators = new TreeMap<>();
+	private static TreeMap<Legislator, AuthorSuccessStats> readLegislators() throws Exception {
+		TreeMap<Legislator, AuthorSuccessStats> legislators = new TreeMap<>();
 		for ( Legislator legislator: Legislators.legislators()) {
 			if ( legislator.isActive ) {
 				int officeScore = determineOfficeScore(legislator);
-				legislators.put(legislator.id, new AuthorSuccessStats(legislator, officeScore));
+				legislators.put(legislator, new AuthorSuccessStats(officeScore));
 			}
 		}
 		return legislators;
