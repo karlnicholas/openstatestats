@@ -32,6 +32,8 @@ public class TotalBillsPassed {
 		determineOfficeScores(authorSuccess);
 		ArrayList<Bill.Sponsor> sponsors = new ArrayList<Bill.Sponsor>();
 		for ( Bill bill: Bills.bills() ) {
+			if (!(bill.id.startsWith("SB") || bill.id.startsWith("AB") || bill.id.startsWith("HB")) ) continue;
+
 			int progress = determineCaProgress(bill);
 			sponsors.clear();
 			determinePrincipalSponsors(bill, sponsors);
