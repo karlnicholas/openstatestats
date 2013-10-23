@@ -175,7 +175,7 @@ public class TotalBillsPassed {
 						successStat.cchair++;
 					} else { 
 						// assume it's a leadership position?
-						System.out.println(legislator + ":" + role);
+						System.out.println("Leader Role???:" + legislator + ":" + role);
 						successStat.leader++;
 					}
 				}
@@ -190,6 +190,7 @@ public class TotalBillsPassed {
 			if ( successStat.cchair == 1 ) successStat.officeScore = 3;
 			if ( successStat.cchair > 0 && successStat.cvchair > 0 ) successStat.officeScore = 4;
 			if ( successStat.leader > 0 ) successStat.officeScore = 5;
+
 			for ( Legislator.Role role: legislator.roles ) {
 				String type = role.type.toLowerCase();
 				if ( !(type.contains("member") || type.contains("vice chair") || type.contains("chair")) ) {
@@ -197,6 +198,7 @@ public class TotalBillsPassed {
 					successStat.officeScore = 5;
 				}
 			}
+			
 		}
 	}
 	
