@@ -2,13 +2,13 @@ import java.util.ArrayList;
 import java.util.TimeZone;
 import java.util.TreeMap;
 
-import net.thegreshams.openstates4j.bulkdata.Bills;
-import net.thegreshams.openstates4j.bulkdata.Committees;
-import net.thegreshams.openstates4j.bulkdata.Legislators;
-import net.thegreshams.openstates4j.bulkdata.LoadBulkData;
-import net.thegreshams.openstates4j.model.Bill;
-import net.thegreshams.openstates4j.model.Committee;
-import net.thegreshams.openstates4j.model.Legislator;
+import org.openstates.bulkdata.LoadBulkData;
+import org.openstates.data.Bill;
+import org.openstates.data.Committee;
+import org.openstates.data.Legislator;
+import org.openstates.model.Bills;
+import org.openstates.model.Committees;
+import org.openstates.model.Legislators;
 
 public class TotalBillsPassed {
 
@@ -26,13 +26,13 @@ public class TotalBillsPassed {
 
 	public static void main(String[] args) throws Exception {
 
-		LoadBulkData.LoadCurrentTerm( TotalBillsPassed.class.getResource("2013-10-07-ca-json.zip").getFile(), "20132014", TimeZone.getTimeZone("GMT-08:00") );
+		new LoadBulkData().loadCurrentTerm( "2013-10-07-ca-json.zip", "2013", TimeZone.getTimeZone("GMT-08:00") );
 //		LoadBulkData.LoadCurrentTerm( TotalBillsPassed.class.getResource("2013-10-09-mo-json.zip").getFile(), "2013", TimeZone.getTimeZone("GMT-06:00") );
 		TreeMap<Legislator, AuthorSuccessStats> authorSuccess = readLegislators();
 		determineOfficeScores(authorSuccess);
 		ArrayList<Bill.Sponsor> sponsors = new ArrayList<Bill.Sponsor>();
-		for ( Bill bill: Bills.bills() ) {
-			if (!(bill.id.startsWith("SB") || bill.id.startsWith("AB") || bill.id.startsWith("HB")) ) continue;
+		for ( Bill bill: Bills.values() ) {
+			if (!(bill.bill_id.startsWith("SB") || bill.bill_id.startsWith("AB") || bill.bill_id.startsWith("HB")) ) continue;
 
 			int progress = determineCaProgress(bill);
 			sponsors.clear();
@@ -41,8 +41,8 @@ public class TotalBillsPassed {
 				boolean cFlag = false;
 				AuthorSuccessStats authorStats = null;
 				Legislator legislator = null;
-				if ( sponsor != null && sponsor.legislatorId != null ) {
-					legislator = Legislators.get(sponsor.legislatorId);
+				if ( sponsor != null && sponsor.leg_id != null ) {
+					legislator = Legislators.get(sponsor.leg_id);
 					if ( legislator != null ) authorStats = authorSuccess.get(legislator);
 				}
 				if ( authorStats != null && !cFlag ) {
@@ -69,7 +69,7 @@ public class TotalBillsPassed {
 		System.out.println( "NAME" + "\t" + "CHAMBER" + "\t" + "DISTRICT" + "\t" + "PARTY" + "\t" + "OFFICESCORE" + "\t" + "BILLSINT" + "\t" + "BILLSOC" + "\t" + "BILLSPASSED" + "\t" + "BILLSCHAP"  );
 		for ( Legislator legislator: authorSuccess.keySet() ) {
 			AuthorSuccessStats authorStats = authorSuccess.get(legislator); 
-			System.out.println( legislator.fullName + "\t" + legislator.chamber + "\t" + legislator.district + "\t" + legislator.party + "\t" + authorStats.officeScore + "\t" + authorStats.billIntroducedCount + "\t" + authorStats.billOtherChamberCount + "\t" + authorStats.billPassedCount + "\t" + authorStats.billChapteredCount );
+			System.out.println( legislator.full_name + "\t" + legislator.chamber + "\t" + legislator.district + "\t" + legislator.party + "\t" + authorStats.officeScore + "\t" + authorStats.billIntroducedCount + "\t" + authorStats.billOtherChamberCount + "\t" + authorStats.billPassedCount + "\t" + authorStats.billChapteredCount );
 		}
 	}
 
@@ -134,10 +134,8 @@ public class TotalBillsPassed {
 
 	private static TreeMap<Legislator, AuthorSuccessStats> readLegislators() throws Exception {
 		TreeMap<Legislator, AuthorSuccessStats> legislators = new TreeMap<>();
-		for ( Legislator legislator: Legislators.legislators()) {
-			if ( legislator.isActive ) {
-				legislators.put(legislator, new AuthorSuccessStats());
-			}
+		for ( Legislator legislator: Legislators.values()) {
+			legislators.put(legislator, new AuthorSuccessStats());
 		}
 		return legislators;
 	}
@@ -158,10 +156,10 @@ public class TotalBillsPassed {
 	 * 
 	 */
 	private static void determineOfficeScores(TreeMap<Legislator, AuthorSuccessStats> authorSuccess) {
-		for ( Committee committee: Committees.committees() ) {
+		for ( Committee committee: Committees.values() ) {
 			for ( Committee.Member member: committee.members ) {
 				Legislator legislator = null;
-				if ( member.legislator.id != null ) legislator = Legislators.get(member.legislator.id);
+				if ( member.leg_id != null ) legislator = Legislators.get(member.leg_id);
 				if ( legislator != null ) {
 					AuthorSuccessStats successStat = authorSuccess.get(legislator);
 					String role = member.role.toLowerCase();

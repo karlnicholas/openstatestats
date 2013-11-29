@@ -17,9 +17,9 @@
   </build>
   <dependencies>
   	<dependency>
-  		<groupId>net.thegreshams</groupId>
-  		<artifactId>openstates4j</artifactId>
-  		<version>0.0.1-SNAPSHOT</version>
+  		<groupId>org.openstates</groupId>
+  		<artifactId>openstates-bulk</artifactId>
+  		<version>1.0.0</version>
   	</dependency>
   </dependencies>
 </project>
