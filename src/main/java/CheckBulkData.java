@@ -46,7 +46,7 @@ public class CheckBulkData {
 			System.out.println("The " + party + " party has " + partyStat.memberCount + " members and passed " + partyStat.billsPassed + " bills.");
 			if ( partyStat.billsPassed > majorityParty.billsPassed ) majorityPartyPassedMoreBills = false;
 		}
-		System.out.println("It is " + majorityPartyPassedMoreBills + " that he majority party passed the most bills.");
+		System.out.println("It is " + majorityPartyPassedMoreBills + " that the majority party passed the most bills.");
 	}
 	
 	private static void determineParties( TreeMap<String, PartyStat> partyStats ) {
