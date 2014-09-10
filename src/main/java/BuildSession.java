@@ -1,31 +1,39 @@
+
+
 import java.io.*;
 import java.util.*;
 
+import openstatestats.model.District;
+import openstatestats.model.Session;
+
 import org.openstates.bulkdata.LoadBulkData;
-import org.openstates.data.Bill;
-import org.openstates.data.Committee;
-import org.openstates.data.Legislator;
+import org.openstates.data.*;
 import org.openstates.model.Bills;
 import org.openstates.model.Committees;
 import org.openstates.model.Legislators;
+import org.supercsv.io.*;
+import org.supercsv.prefs.CsvPreference;
 
-public class CompLES {
+import com.fasterxml.jackson.databind.*;
 
+public class BuildSession {
+	private static enum AGGS {
+		RESINT, RESADOPTED, 
+		BILLSINT, BILLSOC, BILLSPASSED, BILLSCHAP, 
+		TOPICSINT, TOPICSOC, TOPICSPASSED, TOPICSCHAP
+	};
+		
 	static class AuthorStats {
 		public AuthorStats() {
-			billData = new int[3][];
+			billData = new long[3][];
 			for ( int i=0; i<3; ++i ) {
-				billData[i] = new int[4];
+				billData[i] = new long[4];
 				for ( int j=0;j<4;++j) {
 					billData[i][j] = 0;
 				}
 			}
 		}
-//		int billIntroducedCount = 0;
-//		int billOtherChamberCount = 0;
-//		int billPassedCount = 0;
-//		int billChapteredCount = 0;
-		int billData[][];
+		long billData[][];
 		int cmember = 0;
 		int cvchair = 0;
 		int cchair = 0;
@@ -37,66 +45,50 @@ public class CompLES {
 	private static TreeSet<String> currentTopics;
 
 	public static void main(String[] args) throws Exception {
+		LoadBulkData loadBulkData = new LoadBulkData();
+		TestAction[] testActions = new TestAction[] {
+				new GATestAction(), 
+				new ARTestAction(), 
+				new OKTestAction(), 
+				new MATestAction(), 
+				new NCTestAction(), 
+				new AZTestAction(), 
+//				new MNTestAction(), 
+				new HITestAction(), 
+				new LATestAction(), 
+				new TNTestAction(), 
+				new VATestAction(), 
+				new NJTestAction(), 
+				new PATestAction(), 
+				new MDTestAction(), 
+				new MSTestAction(), 
+				new MOTestAction(), 
+				new TXTestAction(), 
+				new NYTestAction(), 
+				new CATestAction(), 
+		};
 		
-		TestAction testAction = new MSTestAction(); 
-		buildcurrentTopics(testAction);
-		
-//		new LoadBulkData().loadCurrentTerm( "2013-10-07-ca-json.zip", "2013", TimeZone.getTimeZone("GMT-08:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-09-mo-json.zip", "2013", TimeZone.getTimeZone("GMT-06:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-08-tx-json.zip", "83", TimeZone.getTimeZone("GMT-06:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-08-ny-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
-		new LoadBulkData().loadCurrentTerm( "2013-10-07-ms-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-07-md-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-08-pa-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-11-01-nj-json.zip", "215", TimeZone.getTimeZone("GMT-05:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-08-va-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-07-tn-json.zip", "108", TimeZone.getTimeZone("GMT-05:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-07-la-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-11-01-mn-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-09-hi-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-07-az-json.zip", "51st-1st", TimeZone.getTimeZone("GMT-07:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-08-nc-json.zip", "2013", TimeZone.getTimeZone("GMT-07:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-09-ma-json.zip", "187th", TimeZone.getTimeZone("GMT-05:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-09-ok-json.zip", "2013", TimeZone.getTimeZone("GMT-06:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-07-ar-json.zip", "2013", TimeZone.getTimeZone("GMT-06:00") );
-//		new LoadBulkData().loadCurrentTerm( "2013-10-07-ga-json.zip", "2013", TimeZone.getTimeZone("GMT-06:00") );
-		
-
-		TreeMap<Legislator, AuthorStats> legislatorStats = readLegislators();
-		determineOfficeScores(legislatorStats);
-		ArrayList<Bill.Sponsor> sponsors = new ArrayList<Bill.Sponsor>();
-		Collection<Bill> bills = Bills.values();
-		for ( Bill bill:  bills ) {
-//			System.out.println(bill.bill_id+"---------------------------------------");
-			sponsors.clear();
-			determinePrincipalSponsors(bill, sponsors);
-			for ( Bill.Sponsor sponsor: sponsors ) {
-				Legislator legislator = null;
-				AuthorStats sponsorStats = null;
-				if ( sponsor != null && sponsor.leg_id != null ) {
-					legislator = Legislators.get(sponsor.leg_id);
-					if ( legislator != null ) sponsorStats = legislatorStats.get(legislator);
-				}
-				if ( sponsorStats != null ) determineBillProgress(bill, sponsorStats, testAction);
-
-			}
-			if ( sponsors.size() == 0 ) System.out.println("Principal Sponsor Not Found:" + bill.bill_id );
-		}
-		computeLES(legislatorStats);
-		System.out.print( "NAME" + "\t" + "CHAMBER" + "\t" + "DISTRICT" + "\t" + "PARTY" + "\t" + "OFFICE" + "\t");
-		System.out.print( "BILLSINT" + "\t" + "BILLSOC" + "\t" + "BILLSPASSED" + "\t" + "BILLSCHAP" + "\t" );
-		System.out.print( "BILLSINT" + "\t" + "BILLSOC" + "\t" + "BILLSPASSED" + "\t" + "BILLSCHAP" + "\t" );
-		System.out.print( "BILLSINT" + "\t" + "BILLSOC" + "\t" + "BILLSPASSED" + "\t" + "BILLSCHAP" + "\t" );
-		System.out.println( "LES");
-		for ( Legislator legislator: legislatorStats.keySet() ) {
-			AuthorStats sponsorStats = legislatorStats.get(legislator); 
-			System.out.print( legislator.full_name + "\t" + legislator.chamber + "\t" + legislator.district + "\t" + legislator.party + "\t" + sponsorStats.officeScore + "\t"  );
-			System.out.print( sponsorStats.billData[0][0] + "\t" + sponsorStats.billData[0][1] + "\t" + sponsorStats.billData[0][2] + "\t" + sponsorStats.billData[0][3] + "\t");
-			System.out.print( sponsorStats.billData[1][0] + "\t" + sponsorStats.billData[1][1] + "\t" + sponsorStats.billData[1][2] + "\t" + sponsorStats.billData[1][3] + "\t");
-			System.out.print( sponsorStats.billData[2][0] + "\t" + sponsorStats.billData[2][1] + "\t" + sponsorStats.billData[2][2] + "\t" + sponsorStats.billData[2][3] + "\t");
-			System.out.println( sponsorStats.les );
+		for( TestAction testAction: testActions) {
+			Session session = buildSession(testAction);
+			writeCsv(session);
 		}
 	}
+
+/*
+
+	System.out.print( "NAME" + "\t" + "CHAMBER" + "\t" + "DISTRICT" + "\t" + "PARTY" + "\t" + "OFFICE" + "\t");
+	System.out.print( AGGS.BILLSINT.toString() + "\t" + AGGS.BILLSOC.toString() + "\t" + AGGS.BILLSPASSED.toString() + "\t" + AGGS.BILLSCHAP.toString() + "\t" );
+	System.out.print( AGGS.BILLSINT.toString() + "\t" + AGGS.BILLSOC.toString() + "\t" + AGGS.BILLSPASSED.toString() + "\t" + AGGS.BILLSCHAP.toString() + "\t" );
+	System.out.print( AGGS.BILLSINT.toString() + "\t" + AGGS.BILLSOC.toString() + "\t" + AGGS.BILLSPASSED.toString() + "\t" + AGGS.BILLSCHAP.toString() + "\t" );
+	System.out.println( "LES");
+
+	AuthorStats sponsorStats = legislatorStats.get(legislator); 
+	System.out.print( legislator.full_name + "\t" + legislator.chamber + "\t" + legislator.district + "\t" + legislator.party + "\t" + sponsorStats.officeScore + "\t"  );
+	System.out.print( sponsorStats.billData[0][0] + "\t" + sponsorStats.billData[0][1] + "\t" + sponsorStats.billData[0][2] + "\t" + sponsorStats.billData[0][3] + "\t");
+	System.out.print( sponsorStats.billData[1][0] + "\t" + sponsorStats.billData[1][1] + "\t" + sponsorStats.billData[1][2] + "\t" + sponsorStats.billData[1][3] + "\t");
+	System.out.print( sponsorStats.billData[2][0] + "\t" + sponsorStats.billData[2][1] + "\t" + sponsorStats.billData[2][2] + "\t" + sponsorStats.billData[2][3] + "\t");
+	System.out.println( sponsorStats.les );
+ */
 
 	/*  code that works for ca, but not sure about anywhere else .. 
 				// here, legislator.fullName can be really a committee name
@@ -117,6 +109,177 @@ public class CompLES {
 				}
 
 	 */
+
+	private static Session buildSession(TestAction testAction) throws Exception { 
+		testAction.loadBulkData();
+		TreeMap<Legislator, AuthorStats> legislatorStats = readLegislators();
+		buildcurrentTopics(testAction);
+		determineOfficeScores(legislatorStats);
+		ArrayList<Bill.Sponsor> sponsors = new ArrayList<Bill.Sponsor>();
+		Collection<Bill> bills = Bills.values();
+		for ( Bill bill:  bills ) {
+	//		System.out.println(bill.bill_id+"---------------------------------------");
+			sponsors.clear();
+			determinePrincipalSponsors(bill, sponsors);
+			for ( Bill.Sponsor sponsor: sponsors ) {
+				Legislator legislator = null;
+				AuthorStats sponsorStats = null;
+				if ( sponsor != null && sponsor.leg_id != null ) {
+					legislator = Legislators.get(sponsor.leg_id);
+					if ( legislator != null ) sponsorStats = legislatorStats.get(legislator);
+				}
+				if ( sponsorStats != null ) determineBillProgress(bill, sponsorStats, testAction);
+	
+			}
+			if ( sponsors.size() == 0 ) System.out.println("Principal Sponsor Not Found:" + bill.bill_id );
+		}
+		
+		Session session = new Session();
+		session.setState(testAction.getState());
+		session.setSession(testAction.getSession());
+		List<openstatestats.model.District> sDistricts = session.getDistricts();
+		
+		for ( Legislator legislator: legislatorStats.keySet() ) {
+			AuthorStats sponsorStats = legislatorStats.get(legislator); 
+			
+
+			openstatestats.model.District sDistrict;
+			int index = sDistricts.indexOf(legislator.district);
+			if ( index != -1 ) {
+				sDistrict = sDistricts.get(index); 
+				Map<String, Long> aggregates = sDistrict.getAggregates(); 
+				aggregates.put(AGGS.RESINT.toString(), aggregates.get(AGGS.RESINT.toString()) + sponsorStats.billData[0][0]);
+				aggregates.put(AGGS.RESADOPTED.toString(), aggregates.get(AGGS.RESADOPTED.toString()) + sponsorStats.billData[0][3]);
+				aggregates.put(AGGS.BILLSINT.toString(), aggregates.get(AGGS.BILLSINT.toString()) + sponsorStats.billData[1][0]);
+				aggregates.put(AGGS.BILLSOC.toString(), aggregates.get(AGGS.BILLSOC.toString()) + sponsorStats.billData[1][1]);
+				aggregates.put(AGGS.BILLSPASSED.toString(), aggregates.get(AGGS.BILLSPASSED.toString()) + sponsorStats.billData[1][2]);
+				aggregates.put(AGGS.BILLSCHAP.toString(), aggregates.get(AGGS.BILLSCHAP.toString()) + sponsorStats.billData[1][3]);
+				aggregates.put(AGGS.TOPICSINT.toString(), aggregates.get(AGGS.TOPICSINT.toString()) + sponsorStats.billData[2][0]);
+				aggregates.put(AGGS.TOPICSOC.toString(), aggregates.get(AGGS.TOPICSOC.toString()) + sponsorStats.billData[2][1]);
+				aggregates.put(AGGS.TOPICSPASSED.toString(), aggregates.get(AGGS.TOPICSPASSED.toString()) + sponsorStats.billData[2][2]);
+				aggregates.put(AGGS.TOPICSCHAP.toString(), aggregates.get(AGGS.TOPICSCHAP.toString()) + sponsorStats.billData[2][3]);
+			}
+			else {
+				sDistrict = new openstatestats.model.District();
+				sDistrict.setChamber(legislator.chamber);
+				sDistrict.setDistrict(legislator.district);
+				Map<String, Long> aggregates = sDistrict.getAggregates(); 
+				aggregates.put(AGGS.RESINT.toString(), sponsorStats.billData[0][0]);
+				aggregates.put(AGGS.RESADOPTED.toString(), sponsorStats.billData[0][3]);
+				aggregates.put(AGGS.BILLSINT.toString(), sponsorStats.billData[1][0]);
+				aggregates.put(AGGS.BILLSOC.toString(), sponsorStats.billData[1][1]);
+				aggregates.put(AGGS.BILLSPASSED.toString(), sponsorStats.billData[1][2]);
+				aggregates.put(AGGS.BILLSCHAP.toString(), sponsorStats.billData[1][3]);
+				aggregates.put(AGGS.TOPICSINT.toString(), sponsorStats.billData[2][0]);
+				aggregates.put(AGGS.TOPICSOC.toString(), sponsorStats.billData[2][1]);
+				aggregates.put(AGGS.TOPICSPASSED.toString(), sponsorStats.billData[2][2]);
+				aggregates.put(AGGS.TOPICSCHAP.toString(), sponsorStats.billData[2][3]);
+				sDistricts.add(sDistrict);
+			}
+			openstatestats.model.Legislator sLegislator = new openstatestats.model.Legislator();
+			sLegislator.setName(legislator.full_name);
+			sLegislator.setChamber(legislator.chamber);
+			sLegislator.setDistrict(legislator.district);
+			sLegislator.setParty(legislator.party);
+			sDistrict.getLegislators().add(sLegislator); 
+			
+		}
+		computeLES(sDistricts);
+		return session;
+	}	
+
+	private static void writeCsv(Session session) throws Exception {
+	        
+    	class MyCsvWriter extends AbstractCsvWriter {
+
+			public MyCsvWriter(Writer writer, CsvPreference preference) {
+				super(writer, preference);
+			}
+			public void writeRow(String... columns ) throws IOException {
+				super.writeRow(columns);
+			}
+		}
+		MyCsvWriter writer = null;
+        try {
+        	
+        	writer = new MyCsvWriter(new FileWriter("c:/users/karl/"+session.getState()+"-2013-les.csv"), CsvPreference.STANDARD_PREFERENCE);
+	        List<openstatestats.model.District> sDistricts = session.getDistricts();
+	        // the header elements are used to map the bean values to each column (names must match)
+	        List<String> columns = new ArrayList<String>();
+
+	        columns.add("district");
+	        columns.add("chamber");
+	        for ( String head: sDistricts.get(0).getAggregates().keySet()) {
+	        	columns.add(head);
+	        }
+	        for ( String head: sDistricts.get(0).getComputations().keySet()) {
+	        	columns.add(head);
+	        }
+
+            // write the header
+	        String[] sColumns = new String[columns.size()];
+	        sColumns = columns.toArray(sColumns);
+            writer.writeHeader(sColumns);
+            
+            Collections.sort(sDistricts, new Comparator<openstatestats.model.District>() {
+				@Override
+				public int compare(District o1, District o2) {
+					return o2.getComputations().get("LES").compareTo(o1.getComputations().get("LES"));
+				}
+            	
+            });
+            // write the customer lists
+            for ( final openstatestats.model.District dist: sDistricts) {
+            	columns.clear();
+    	        columns.add(dist.getDistrict());
+    	        columns.add(dist.getChamber());
+    	        Map<String, Long> aggs = dist.getAggregates();
+    	        for ( String key: aggs.keySet() ) {
+    	        	Long agg = aggs.get(key); 
+    	        	columns.add(agg.toString());
+    	        }
+    	        Map<String, Double> comps = dist.getComputations();
+    	        for ( String key: comps.keySet() ) {
+    	        	Double comp = comps.get(key); 
+    	        	columns.add(comp.toString());
+    	        }
+                writer.writeRow(columns.toArray(sColumns));
+            }
+                
+        }
+        finally {
+            if( writer  != null ) {
+            	writer.close();
+            }
+        }
+	}
+
+	/**
+			legAgg.setName(legislator.full_name);
+			legAgg.setChamber(legislator.chamber);
+			legAgg.setDistrict(legislator.district);
+			legAgg.setParty(legislator.party);
+			Map<String, Integer> aggregates = legAgg.getAggregates(); 
+			aggregates.put(AGGS.RESINT.toString(), sponsorStats.billData[0][0]);
+			aggregates.put(AGGS.RESADOPTED.toString(), sponsorStats.billData[0][3]);
+			aggregates.put(AGGS.BILLSINT.toString(), sponsorStats.billData[1][0]);
+			aggregates.put(AGGS.BILLSOC.toString(), sponsorStats.billData[1][1]);
+			aggregates.put(AGGS.BILLSPASSED.toString(), sponsorStats.billData[1][2]);
+			aggregates.put(AGGS.BILLSCHAP.toString(), sponsorStats.billData[1][3]);
+			aggregates.put(AGGS.TOPICSINT.toString(), sponsorStats.billData[2][0]);
+			aggregates.put(AGGS.TOPICSOC.toString(), sponsorStats.billData[2][1]);
+			aggregates.put(AGGS.TOPICSPASSED.toString(), sponsorStats.billData[2][2]);
+			aggregates.put(AGGS.TOPICSCHAP.toString(), sponsorStats.billData[2][3]);
+			Map<String, Double> computations = legAgg.getComputations();
+			computations.put("LES", sponsorStats.les);
+	 */
+
+	private static void jacksonPrintJson(Session session) throws Exception {
+		ObjectMapper mapper = new ObjectMapper();
+        mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        System.out.println(mapper.writeValueAsString(session));
+	}
+
 	private static void determinePrincipalSponsors(Bill bill, ArrayList<Bill.Sponsor> sponsors) {
 		for ( Bill.Sponsor sponsor: bill.sponsors ) {
 			if ( sponsor.type.toLowerCase().equals("primary") ) sponsors.add(sponsor);
@@ -127,7 +290,7 @@ public class CompLES {
 		int cat;	// default resolution
 		if ( testAction.testId(bill.bill_id) == true ) {
 			if ( currentTopics.contains(bill.bill_id) ) {
-				System.out.println("Topic: " + bill.bill_id);
+//				System.out.println("Topic: " + bill.bill_id);
 				cat = 2;
 			}
 			else cat = 1;
@@ -171,6 +334,14 @@ public class CompLES {
 		public String getState() {
 			return "GA";
 		}
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-07-ga-json.zip", "2013", TimeZone.getTimeZone("GMT-06:00") );
+		}
 	}
 
 	static class ARTestAction implements TestAction {
@@ -194,6 +365,14 @@ public class CompLES {
 		public String getState() {
 			return "AR";
 		}
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-07-ar-json.zip", "2013", TimeZone.getTimeZone("GMT-06:00") );
+		}
 	}
 
 	static class OKTestAction implements TestAction {
@@ -216,6 +395,14 @@ public class CompLES {
 		public String getState() {
 			return "OK";
 		}
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-09-ok-json.zip", "2013", TimeZone.getTimeZone("GMT-06:00") );			
+		}
 	}
 
 	static class MATestAction implements TestAction {
@@ -235,6 +422,14 @@ public class CompLES {
 		@Override
 		public String getState() {
 			return "MA";
+		}
+		@Override
+		public String getSession() {
+			return "187th";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-09-ma-json.zip", "187th", TimeZone.getTimeZone("GMT-05:00") );
 		}
 	}
 
@@ -257,6 +452,14 @@ public class CompLES {
 		@Override
 		public String getState() {
 			return "NC";
+		}
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-08-nc-json.zip", "2013", TimeZone.getTimeZone("GMT-07:00") );
 		}
 	}
 
@@ -281,6 +484,14 @@ public class CompLES {
 		public String getState() {
 			return "AZ";
 		}
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-07-az-json.zip", "51st-1st", TimeZone.getTimeZone("GMT-07:00") );
+		}
 	}
 
 	static class MNTestAction implements TestAction {
@@ -296,6 +507,14 @@ public class CompLES {
 		@Override
 		public String getState() {
 			return "MN";
+		}
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-11-01-mn-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
 		}
 	}
 
@@ -320,6 +539,14 @@ public class CompLES {
 		@Override
 		public String getState() {
 			return "HI";
+		}
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-09-hi-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
 		}
 	}
 
@@ -346,6 +573,14 @@ public class CompLES {
 		public String getState() {
 			return "LA";
 		}
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-07-la-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
+		}
 	}
 
 	static class TNTestAction implements TestAction {
@@ -367,6 +602,14 @@ public class CompLES {
 		@Override
 		public String getState() {
 			return "TN";
+		}
+		@Override
+		public String getSession() {
+			return "TN";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-07-tn-json.zip", "108", TimeZone.getTimeZone("GMT-05:00") );
 		}
 	}
 
@@ -392,6 +635,14 @@ public class CompLES {
 		public String getState() {
 			return "VA";
 		}
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-08-va-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
+		}
 	}
 
 	static class NJTestAction implements TestAction {
@@ -412,6 +663,14 @@ public class CompLES {
 		@Override
 		public String getState() {
 			return "NJ";
+		}
+		@Override
+		public String getSession() {
+			return "215";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-11-01-nj-json.zip", "215", TimeZone.getTimeZone("GMT-05:00") );
 		}
 		
 	}
@@ -437,6 +696,16 @@ public class CompLES {
 			else if ( act.contains("approved by the governor") ) return 3;
 			return -1;
 		}
+
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-08-pa-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
+		}
 	}
 
 	static class MDTestAction implements TestAction {
@@ -461,6 +730,16 @@ public class CompLES {
 			else if ( act.contains("approved by the governor") ) return 3;
 			return -1;
 		}
+
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-07-md-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
+		}
 		
 	}
 	static class MSTestAction implements TestAction {
@@ -484,6 +763,16 @@ public class CompLES {
 			else if ( act.contains("approved by governor") ) return 3;
 			return -1;
 		}
+
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-07-ms-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
+		}
 		
 	}
 
@@ -505,6 +794,14 @@ public class CompLES {
 			else if ( act.contains("approved by governor") ) return 3;
 			else if ( act.contains("signed by governor") ) return 3;
 			return -1;
+		}
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-09-mo-json.zip", "2013", TimeZone.getTimeZone("GMT-06:00") );
 		}
 	}
 	static class TXTestAction implements TestAction {
@@ -529,6 +826,16 @@ public class CompLES {
 			return -1;
 		}
 
+		@Override
+		public String getSession() {
+			return "83";
+		}
+
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-08-tx-json.zip", "83", TimeZone.getTimeZone("GMT-06:00") );
+		}
+
 	}
 	static class NYTestAction implements TestAction {
 
@@ -550,6 +857,16 @@ public class CompLES {
 			else if (act.contains("delivered to governor") ) return 2;
 			else if ( act.contains("signed chap.") ) return 3;
 			return -1;
+		}
+
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-08-ny-json.zip", "2013", TimeZone.getTimeZone("GMT-05:00") );
 		}
 		
 	}
@@ -578,14 +895,25 @@ public class CompLES {
 			else if ( act.contains("chaptered by secretary of state") ) return 3;
 			return -1;
 		}
+
+		@Override
+		public String getSession() {
+			return "2013";
+		}
+
+		@Override
+		public void loadBulkData() throws Exception {
+			new LoadBulkData().loadCurrentTerm( "2013-10-07-ca-json.zip", "2013", TimeZone.getTimeZone("GMT-08:00") );			
+		}
 		
 	}
+/*
 	private static void printAllActions(Bill bill) {
 		for ( Bill.Action action: bill.actions ) {
 			System.out.println(action);
 		}
 	}
-
+*/
 	private static TreeMap<Legislator, AuthorStats> readLegislators() throws Exception {
 		TreeMap<Legislator, AuthorStats> legislators = new TreeMap<>();
 		for ( Legislator legislator: Legislators.values()) {
@@ -654,30 +982,28 @@ public class CompLES {
 		}
 	}
 	
-	public static void computeLES(TreeMap<Legislator, AuthorStats> legislators) {
-		
-//		Map<String, Double> computeLES = (Map<String, Double>)computePad.get(LES); 
-		
+	public static void computeLES(List<openstatestats.model.District> sDistricts) {
+				
 //		ArrayList<Long> lidsAll = makeRList();
 	
-		double LESMult = new Double(legislators.size()/4.0);
+		double LESMult = new Double(sDistricts.size()/4.0);
 
 		double[][] denomArray = new double[3][4];
 
-		denomArray[0][0] = totalFrom(legislators, 0, 0);
-		denomArray[0][1] = totalFrom(legislators, 0, 1); 
-		denomArray[0][2] = totalFrom(legislators, 0, 2); 
-		denomArray[0][3] = totalFrom(legislators, 0, 3); 
+		denomArray[0][0] = totalFrom(sDistricts, AGGS.RESINT);
+		denomArray[0][1] = 0.0;
+		denomArray[0][2] = 0.0;
+		denomArray[0][3] = totalFrom(sDistricts, AGGS.RESADOPTED); 
 		
-		denomArray[1][0] = totalFrom(legislators, 1, 0);
-		denomArray[1][1] = totalFrom(legislators, 1, 1); 
-		denomArray[1][2] = totalFrom(legislators, 1, 2); 
-		denomArray[1][3] = totalFrom(legislators, 1, 3); 
+		denomArray[1][0] = totalFrom(sDistricts, AGGS.BILLSINT);
+		denomArray[1][1] = totalFrom(sDistricts, AGGS.BILLSOC); 
+		denomArray[1][2] = totalFrom(sDistricts, AGGS.BILLSPASSED); 
+		denomArray[1][3] = totalFrom(sDistricts, AGGS.BILLSCHAP); 
 
-		denomArray[2][0] = totalFrom(legislators, 2, 0);
-		denomArray[2][1] = totalFrom(legislators, 2, 1); 
-		denomArray[2][2] = totalFrom(legislators, 2, 2); 
-		denomArray[2][3] = totalFrom(legislators, 2, 3);
+		denomArray[2][0] = totalFrom(sDistricts, AGGS.TOPICSINT);
+		denomArray[2][1] = totalFrom(sDistricts, AGGS.TOPICSOC); 
+		denomArray[2][2] = totalFrom(sDistricts, AGGS.TOPICSPASSED); 
+		denomArray[2][3] = totalFrom(sDistricts, AGGS.TOPICSCHAP);
 		
 		// make the array inverse cumulative across rows 
 		for ( int j=0; j < 3; ++j ) {
@@ -711,44 +1037,53 @@ public class CompLES {
 				+ (billsMult * denomArray[1][3])  
 				+ (topicMult * denomArray[2][3]); 
 
-		double[][] legArray = new double[3][4];
+		double[][] distArray = new double[3][4];
 
-		for ( Legislator key: legislators.keySet()) {
-			AuthorStats stats = legislators.get(key);
+		for ( openstatestats.model.District dist: sDistricts) {
+
+			Map<String, Long> aggregates = dist.getAggregates();
+			distArray[0][0] = aggregates.get(AGGS.RESINT.toString());
+			distArray[0][1] = 0.0;
+			distArray[0][2] = 0.0;
+			distArray[0][3] = aggregates.get(AGGS.RESADOPTED.toString()); 
 			
-			for ( int i=0; i < 4; ++i ) {
-				for ( int j=0; j < 3; ++j ) {
-					legArray[j][i] = stats.billData[j][i];
-				}
-			}
+			distArray[1][0] = aggregates.get(AGGS.BILLSINT.toString());
+			distArray[1][1] = aggregates.get(AGGS.BILLSOC.toString()); 
+			distArray[1][2] = aggregates.get(AGGS.BILLSPASSED.toString()); 
+			distArray[1][3] = aggregates.get(AGGS.BILLSCHAP.toString()); 
+
+			distArray[2][0] = aggregates.get(AGGS.TOPICSINT.toString());
+			distArray[2][1] = aggregates.get(AGGS.TOPICSOC.toString()); 
+			distArray[2][2] = aggregates.get(AGGS.TOPICSPASSED.toString()); 
+			distArray[2][3] = aggregates.get(AGGS.TOPICSCHAP.toString());
 				
 			// make the array inverse cumulative across rows 
 			for ( int j=0; j < 3; ++j ) {
 				for ( int i=0; i < 4; ++i ) {
 					double sum = 0.0;
 					for ( int i2=i; i2 < 4; ++i2 ) {
-						sum += legArray[j][i2]; 
+						sum += distArray[j][i2]; 
 					}
-					legArray[j][i] = sum;
+					distArray[j][i] = sum;
 				}
 			}
 	
 			double[] num = new double[4];
-			num[0] = legArray[0][0]
-					+ (billsMult * legArray[1][0])  
-					+ (topicMult * legArray[2][0]); 
+			num[0] = distArray[0][0]
+					+ (billsMult * distArray[1][0])  
+					+ (topicMult * distArray[2][0]); 
 
-			num[1] = legArray[0][1]
-					+ (billsMult * legArray[1][1])  
-					+ (topicMult * legArray[2][1]); 
+			num[1] = distArray[0][1]
+					+ (billsMult * distArray[1][1])  
+					+ (topicMult * distArray[2][1]); 
 
-			num[2] = legArray[0][2]
-					+ (billsMult * legArray[1][2])  
-					+ (topicMult * legArray[2][2]); 
+			num[2] = distArray[0][2]
+					+ (billsMult * distArray[1][2])  
+					+ (topicMult * distArray[2][2]); 
 
-			num[3] = legArray[0][3]
-					+ (billsMult * legArray[1][3])  
-					+ (topicMult * legArray[2][3]); 
+			num[3] = distArray[0][3]
+					+ (billsMult * distArray[1][3])  
+					+ (topicMult * distArray[2][3]); 
 
 			double partIntroduced = num[0] / denom[0];			
 			double partOtherChamber = num[1] / denom[1];
@@ -756,18 +1091,15 @@ public class CompLES {
 			double partChaptered = num[3] / denom[3]; 
 
 			double LES = (partIntroduced + partOtherChamber + partPassed + partChaptered) * LESMult;
-			stats.les = LES;
+			dist.getComputations().put("LES", LES);
 		}
 	}
 	
-	private static double totalFrom( TreeMap<Legislator, AuthorStats> legislators, int row, int col) {
+	private static double totalFrom( List<openstatestats.model.District> sDistricts, AGGS value) {
 		double ret = 0.0;
-		for ( Legislator key: legislators.keySet()) {
-			AuthorStats stats = legislators.get(key);
-			ret = ret + stats.billData[row][col];
-//			for ( int i=col; i<4; ++i ) {
-//				ret = ret + stats.billData[row][i];
-//			}
+		for ( openstatestats.model.District dist: sDistricts) {
+			Long iVal = dist.getAggregates().get(value.toString());
+			ret = ret + iVal;
 		}
 		return ret;
 	}
@@ -787,6 +1119,8 @@ public class CompLES {
 
 	interface TestAction {
 		public String getState();
+		public String getSession();
+		public void loadBulkData() throws Exception;
 		public boolean testId(String bill_id);
 		public int testAction(String chamber, String act);
 	}
@@ -802,4 +1136,5 @@ public class CompLES {
 		}
 		
 	}
+
 }
