@@ -2,7 +2,7 @@ package openstatestats.model;
 
 import java.util.*;
 
-public class District extends Aggregate implements Comparable<District> {
+public class District implements Comparable<District> {
 	private String chamber;
 	private String district;
 	private List<Legislator> legislators = new ArrayList<Legislator>();
@@ -30,4 +30,5 @@ public class District extends Aggregate implements Comparable<District> {
 		if ( !chamber.equals(o.chamber)) return chamber.compareTo(o.chamber);
 		return district.compareTo(o.district);
 	}
+
 }

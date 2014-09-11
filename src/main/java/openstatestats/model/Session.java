@@ -1,12 +1,10 @@
 package openstatestats.model;
 
-import java.util.*;
-
-public class Session {
+public class Session extends UserData<Session> {
 	
 	private String state;
 	private String session;
-	private List<District> districts = new ArrayList<District>();
+	private Districts districts = new Districts();
 	
 	public String getState() {
 		return state;
@@ -20,10 +18,10 @@ public class Session {
 	public void setSession(String session) {
 		this.session = session;
 	}
-	public List<District> getDistricts() {
+	public Districts getDistricts() {
 		return districts;
 	}
-	public void setDistricts(List<District> districts) {
+	public void setDistricts(Districts districts) {
 		this.districts = districts;
 	}	
 }

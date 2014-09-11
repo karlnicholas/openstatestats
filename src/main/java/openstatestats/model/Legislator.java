@@ -1,6 +1,6 @@
 package openstatestats.model;
 
-public class Legislator extends Aggregate {
+public class Legislator extends UserData {
 	
 	private String name;
 	private String chamber;

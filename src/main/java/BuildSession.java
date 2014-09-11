@@ -3,11 +3,13 @@
 import java.io.*;
 import java.util.*;
 
+import openstatestats.model.*;
 import openstatestats.model.District;
-import openstatestats.model.Session;
+import openstatestats.model.Districts;
 
 import org.openstates.bulkdata.LoadBulkData;
 import org.openstates.data.*;
+import org.openstates.data.Legislator;
 import org.openstates.model.Bills;
 import org.openstates.model.Committees;
 import org.openstates.model.Legislators;
@@ -17,11 +19,14 @@ import org.supercsv.prefs.CsvPreference;
 import com.fasterxml.jackson.databind.*;
 
 public class BuildSession {
-	private static enum AGGS {
-		RESINT, RESADOPTED, 
-		BILLSINT, BILLSOC, BILLSPASSED, BILLSCHAP, 
-		TOPICSINT, TOPICSOC, TOPICSPASSED, TOPICSCHAP
+
+	private static final String GROUPLABEL = "BILLPROGRESS";
+	private static String[] AGGLABELS = {
+		"RESINT", "RESADOPTED", 
+		"BILLSINT", "BILLSOC", "BILLSPASSED", "BILLSCHAP", 
+		"TOPICSINT", "TOPICSOC", "TOPICSPASSED", "TOPICSCHAP"
 	};
+	private static String[] COMPLABELS = {"LES"};
 		
 	static class AuthorStats {
 		public AuthorStats() {
@@ -45,7 +50,7 @@ public class BuildSession {
 	private static TreeSet<String> currentTopics;
 
 	public static void main(String[] args) throws Exception {
-		LoadBulkData loadBulkData = new LoadBulkData();
+/*		
 		TestAction[] testActions = new TestAction[] {
 				new GATestAction(), 
 				new ARTestAction(), 
@@ -72,17 +77,21 @@ public class BuildSession {
 			Session session = buildSession(testAction);
 			writeCsv(session);
 		}
+*/
+		TestAction testAction = new GATestAction();
+		Session session = buildSession(testAction);
+		writeCsv(session);
 	}
 
 /*
 
 	System.out.print( "NAME" + "\t" + "CHAMBER" + "\t" + "DISTRICT" + "\t" + "PARTY" + "\t" + "OFFICE" + "\t");
-	System.out.print( AGGS.BILLSINT.toString() + "\t" + AGGS.BILLSOC.toString() + "\t" + AGGS.BILLSPASSED.toString() + "\t" + AGGS.BILLSCHAP.toString() + "\t" );
-	System.out.print( AGGS.BILLSINT.toString() + "\t" + AGGS.BILLSOC.toString() + "\t" + AGGS.BILLSPASSED.toString() + "\t" + AGGS.BILLSCHAP.toString() + "\t" );
-	System.out.print( AGGS.BILLSINT.toString() + "\t" + AGGS.BILLSOC.toString() + "\t" + AGGS.BILLSPASSED.toString() + "\t" + AGGS.BILLSCHAP.toString() + "\t" );
+	System.out.print( BILLSINT.toString() + "\t" + BILLSOC.toString() + "\t" + BILLSPASSED.toString() + "\t" + BILLSCHAP.toString() + "\t" );
+	System.out.print( BILLSINT.toString() + "\t" + BILLSOC.toString() + "\t" + BILLSPASSED.toString() + "\t" + BILLSCHAP.toString() + "\t" );
+	System.out.print( BILLSINT.toString() + "\t" + BILLSOC.toString() + "\t" + BILLSPASSED.toString() + "\t" + BILLSCHAP.toString() + "\t" );
 	System.out.println( "LES");
 
-	AuthorStats sponsorStats = legislatorStats.get(legislator); 
+	AuthorStats sponsorStats = legislatorStats.getValue(legislator); 
 	System.out.print( legislator.full_name + "\t" + legislator.chamber + "\t" + legislator.district + "\t" + legislator.party + "\t" + sponsorStats.officeScore + "\t"  );
 	System.out.print( sponsorStats.billData[0][0] + "\t" + sponsorStats.billData[0][1] + "\t" + sponsorStats.billData[0][2] + "\t" + sponsorStats.billData[0][3] + "\t");
 	System.out.print( sponsorStats.billData[1][0] + "\t" + sponsorStats.billData[1][1] + "\t" + sponsorStats.billData[1][2] + "\t" + sponsorStats.billData[1][3] + "\t");
@@ -96,11 +105,11 @@ public class BuildSession {
 					String committeId = null;
 					committeId = Committees.findCommitteeKey(sponsor.name, bill.chamber);
 					if ( committeId != null ) {
-						Committee committee = Committees.get(committeId);
+						Committee committee = Committees.getValue(committeId);
 						if ( committee != null ) {
 							legislator = determineChair(committee);
 							if ( legislator != null ) {
-								authorStats = authorSuccess.get( legislator );
+								authorStats = authorSuccess.getValue( legislator );
 								cFlag = true;
 							}
 
@@ -137,54 +146,53 @@ public class BuildSession {
 		Session session = new Session();
 		session.setState(testAction.getState());
 		session.setSession(testAction.getSession());
-		List<openstatestats.model.District> sDistricts = session.getDistricts();
+		Districts districts = session.getDistricts();
+		Aggregate<District> aggregate = districts.createAggregate(GROUPLABEL, AGGLABELS);
 		
 		for ( Legislator legislator: legislatorStats.keySet() ) {
 			AuthorStats sponsorStats = legislatorStats.get(legislator); 
 			
-
-			openstatestats.model.District sDistrict;
-			int index = sDistricts.indexOf(legislator.district);
-			if ( index != -1 ) {
-				sDistrict = sDistricts.get(index); 
-				Map<String, Long> aggregates = sDistrict.getAggregates(); 
-				aggregates.put(AGGS.RESINT.toString(), aggregates.get(AGGS.RESINT.toString()) + sponsorStats.billData[0][0]);
-				aggregates.put(AGGS.RESADOPTED.toString(), aggregates.get(AGGS.RESADOPTED.toString()) + sponsorStats.billData[0][3]);
-				aggregates.put(AGGS.BILLSINT.toString(), aggregates.get(AGGS.BILLSINT.toString()) + sponsorStats.billData[1][0]);
-				aggregates.put(AGGS.BILLSOC.toString(), aggregates.get(AGGS.BILLSOC.toString()) + sponsorStats.billData[1][1]);
-				aggregates.put(AGGS.BILLSPASSED.toString(), aggregates.get(AGGS.BILLSPASSED.toString()) + sponsorStats.billData[1][2]);
-				aggregates.put(AGGS.BILLSCHAP.toString(), aggregates.get(AGGS.BILLSCHAP.toString()) + sponsorStats.billData[1][3]);
-				aggregates.put(AGGS.TOPICSINT.toString(), aggregates.get(AGGS.TOPICSINT.toString()) + sponsorStats.billData[2][0]);
-				aggregates.put(AGGS.TOPICSOC.toString(), aggregates.get(AGGS.TOPICSOC.toString()) + sponsorStats.billData[2][1]);
-				aggregates.put(AGGS.TOPICSPASSED.toString(), aggregates.get(AGGS.TOPICSPASSED.toString()) + sponsorStats.billData[2][2]);
-				aggregates.put(AGGS.TOPICSCHAP.toString(), aggregates.get(AGGS.TOPICSCHAP.toString()) + sponsorStats.billData[2][3]);
+			openstatestats.model.District district = districts.findDistrict(legislator.chamber, legislator.district);
+			if ( district != null ) {
+				Long[] values = aggregate.getValues(district);
+				values[0] = values[0] + sponsorStats.billData[0][0];
+				values[1] = values[1] + sponsorStats.billData[0][3];
+				values[2] = values[2] + sponsorStats.billData[1][0];
+				values[3] = values[3] + sponsorStats.billData[1][1];
+				values[4] = values[4] + sponsorStats.billData[1][2];
+				values[5] = values[5] + sponsorStats.billData[1][3];
+				values[6] = values[6] + sponsorStats.billData[2][0];
+				values[7] = values[7] + sponsorStats.billData[2][1];
+				values[8] = values[8] + sponsorStats.billData[2][2];
+				values[9] = values[9] + sponsorStats.billData[2][3];
+				aggregate.setValues(district, values);
+			} else {
+				openstatestats.model.Legislator sLegislator = new openstatestats.model.Legislator();
+				sLegislator.setName(legislator.full_name);
+				sLegislator.setChamber(legislator.chamber);
+				sLegislator.setDistrict(legislator.district);
+				sLegislator.setParty(legislator.party);
+				district = new openstatestats.model.District();
+				district.setChamber(legislator.chamber);
+				district.setDistrict(legislator.district);
+				district.getLegislators().add(sLegislator); 
+				districts.add(district);
+				
+				Long[] values = new Long[AGGLABELS.length];
+				values[0] = sponsorStats.billData[0][0];
+				values[1] = sponsorStats.billData[0][3];
+				values[2] = sponsorStats.billData[1][0];
+				values[3] = sponsorStats.billData[1][1];
+				values[4] = sponsorStats.billData[1][2];
+				values[5] = sponsorStats.billData[1][3];
+				values[6] = sponsorStats.billData[2][0];
+				values[7] = sponsorStats.billData[2][1];
+				values[8] = sponsorStats.billData[2][2];
+				values[9] = sponsorStats.billData[2][3];
+				aggregate.setValues(district, values);
 			}
-			else {
-				sDistrict = new openstatestats.model.District();
-				sDistrict.setChamber(legislator.chamber);
-				sDistrict.setDistrict(legislator.district);
-				Map<String, Long> aggregates = sDistrict.getAggregates(); 
-				aggregates.put(AGGS.RESINT.toString(), sponsorStats.billData[0][0]);
-				aggregates.put(AGGS.RESADOPTED.toString(), sponsorStats.billData[0][3]);
-				aggregates.put(AGGS.BILLSINT.toString(), sponsorStats.billData[1][0]);
-				aggregates.put(AGGS.BILLSOC.toString(), sponsorStats.billData[1][1]);
-				aggregates.put(AGGS.BILLSPASSED.toString(), sponsorStats.billData[1][2]);
-				aggregates.put(AGGS.BILLSCHAP.toString(), sponsorStats.billData[1][3]);
-				aggregates.put(AGGS.TOPICSINT.toString(), sponsorStats.billData[2][0]);
-				aggregates.put(AGGS.TOPICSOC.toString(), sponsorStats.billData[2][1]);
-				aggregates.put(AGGS.TOPICSPASSED.toString(), sponsorStats.billData[2][2]);
-				aggregates.put(AGGS.TOPICSCHAP.toString(), sponsorStats.billData[2][3]);
-				sDistricts.add(sDistrict);
-			}
-			openstatestats.model.Legislator sLegislator = new openstatestats.model.Legislator();
-			sLegislator.setName(legislator.full_name);
-			sLegislator.setChamber(legislator.chamber);
-			sLegislator.setDistrict(legislator.district);
-			sLegislator.setParty(legislator.party);
-			sDistrict.getLegislators().add(sLegislator); 
-			
 		}
-		computeLES(sDistricts);
+		computeLES(districts);
 		return session;
 	}	
 
@@ -203,16 +211,18 @@ public class BuildSession {
         try {
         	
         	writer = new MyCsvWriter(new FileWriter("c:/users/karl/"+session.getState()+"-2013-les.csv"), CsvPreference.STANDARD_PREFERENCE);
-	        List<openstatestats.model.District> sDistricts = session.getDistricts();
+	        Districts districts = session.getDistricts();
 	        // the header elements are used to map the bean values to each column (names must match)
 	        List<String> columns = new ArrayList<String>();
 
 	        columns.add("district");
 	        columns.add("chamber");
-	        for ( String head: sDistricts.get(0).getAggregates().keySet()) {
+//			Aggregate aggregate = districts.getAggregate(GROUPLABEL);
+
+	        for ( String head: districts.getAggregates().getGroupLabels(GROUPLABEL)) {
 	        	columns.add(head);
 	        }
-	        for ( String head: sDistricts.get(0).getComputations().keySet()) {
+	        for ( String head: districts.getComputations().getGroupLabels(GROUPLABEL)) {
 	        	columns.add(head);
 	        }
 
@@ -220,27 +230,33 @@ public class BuildSession {
 	        String[] sColumns = new String[columns.size()];
 	        sColumns = columns.toArray(sColumns);
             writer.writeHeader(sColumns);
-            
-            Collections.sort(sDistricts, new Comparator<openstatestats.model.District>() {
+            class LESComparator implements Comparator<District> {
+            	private Districts districts;
+            	public LESComparator(Districts districts) {
+            		this.districts = districts;
+            	}
 				@Override
 				public int compare(District o1, District o2) {
-					return o2.getComputations().get("LES").compareTo(o1.getComputations().get("LES"));
+					try {
+						return districts.getComputation(GROUPLABEL).getValue(o2, "LES").compareTo(districts.getComputation(GROUPLABEL).getValue(o1, "LES"));
+					} catch (OpenStatsException e) {
+						throw new RuntimeException(e);
+					}
 				}
-            	
-            });
+            }
+            
+            Collections.sort(districts, new LESComparator(districts));
             // write the customer lists
-            for ( final openstatestats.model.District dist: sDistricts) {
+            for ( final openstatestats.model.District dist: districts) {
             	columns.clear();
     	        columns.add(dist.getDistrict());
     	        columns.add(dist.getChamber());
-    	        Map<String, Long> aggs = dist.getAggregates();
-    	        for ( String key: aggs.keySet() ) {
-    	        	Long agg = aggs.get(key); 
+    	        Long[] aggs = districts.getAggregate(GROUPLABEL).getValues(dist);
+    	        for ( Long agg: aggs ) {
     	        	columns.add(agg.toString());
     	        }
-    	        Map<String, Double> comps = dist.getComputations();
-    	        for ( String key: comps.keySet() ) {
-    	        	Double comp = comps.get(key); 
+    	        Double[] comps = districts.getComputation(GROUPLABEL).getValues(dist);
+    	        for ( Double comp: comps ) {
     	        	columns.add(comp.toString());
     	        }
                 writer.writeRow(columns.toArray(sColumns));
@@ -259,18 +275,18 @@ public class BuildSession {
 			legAgg.setChamber(legislator.chamber);
 			legAgg.setDistrict(legislator.district);
 			legAgg.setParty(legislator.party);
-			Map<String, Integer> aggregates = legAgg.getAggregates(); 
-			aggregates.put(AGGS.RESINT.toString(), sponsorStats.billData[0][0]);
-			aggregates.put(AGGS.RESADOPTED.toString(), sponsorStats.billData[0][3]);
-			aggregates.put(AGGS.BILLSINT.toString(), sponsorStats.billData[1][0]);
-			aggregates.put(AGGS.BILLSOC.toString(), sponsorStats.billData[1][1]);
-			aggregates.put(AGGS.BILLSPASSED.toString(), sponsorStats.billData[1][2]);
-			aggregates.put(AGGS.BILLSCHAP.toString(), sponsorStats.billData[1][3]);
-			aggregates.put(AGGS.TOPICSINT.toString(), sponsorStats.billData[2][0]);
-			aggregates.put(AGGS.TOPICSOC.toString(), sponsorStats.billData[2][1]);
-			aggregates.put(AGGS.TOPICSPASSED.toString(), sponsorStats.billData[2][2]);
-			aggregates.put(AGGS.TOPICSCHAP.toString(), sponsorStats.billData[2][3]);
-			Map<String, Double> computations = legAgg.getComputations();
+			Map<String, Integer> aggregates = legAgg.getValueAggregates(); 
+			aggregates.put(RESINT.toString(), sponsorStats.billData[0][0]);
+			aggregates.put(RESADOPTED.toString(), sponsorStats.billData[0][3]);
+			aggregates.put(BILLSINT.toString(), sponsorStats.billData[1][0]);
+			aggregates.put(BILLSOC.toString(), sponsorStats.billData[1][1]);
+			aggregates.put(BILLSPASSED.toString(), sponsorStats.billData[1][2]);
+			aggregates.put(BILLSCHAP.toString(), sponsorStats.billData[1][3]);
+			aggregates.put(TOPICSINT.toString(), sponsorStats.billData[2][0]);
+			aggregates.put(TOPICSOC.toString(), sponsorStats.billData[2][1]);
+			aggregates.put(TOPICSPASSED.toString(), sponsorStats.billData[2][2]);
+			aggregates.put(TOPICSCHAP.toString(), sponsorStats.billData[2][3]);
+			Map<String, Double> computations = legAgg.getValueComputations();
 			computations.put("LES", sponsorStats.les);
 	 */
 
@@ -982,28 +998,29 @@ public class BuildSession {
 		}
 	}
 	
-	public static void computeLES(List<openstatestats.model.District> sDistricts) {
+	public static void computeLES(Districts districts) throws OpenStatsException {
 				
 //		ArrayList<Long> lidsAll = makeRList();
+		Computation<District> computation = districts.createComputation(GROUPLABEL, COMPLABELS);
 	
-		double LESMult = new Double(sDistricts.size()/4.0);
+		double LESMult = new Double(districts.size()/4.0);
 
 		double[][] denomArray = new double[3][4];
 
-		denomArray[0][0] = totalFrom(sDistricts, AGGS.RESINT);
+		denomArray[0][0] = totalFrom(districts, AGGLABELS[0]);
 		denomArray[0][1] = 0.0;
 		denomArray[0][2] = 0.0;
-		denomArray[0][3] = totalFrom(sDistricts, AGGS.RESADOPTED); 
+		denomArray[0][3] = totalFrom(districts, AGGLABELS[1]); 
 		
-		denomArray[1][0] = totalFrom(sDistricts, AGGS.BILLSINT);
-		denomArray[1][1] = totalFrom(sDistricts, AGGS.BILLSOC); 
-		denomArray[1][2] = totalFrom(sDistricts, AGGS.BILLSPASSED); 
-		denomArray[1][3] = totalFrom(sDistricts, AGGS.BILLSCHAP); 
+		denomArray[1][0] = totalFrom(districts, AGGLABELS[2]);
+		denomArray[1][1] = totalFrom(districts, AGGLABELS[3]); 
+		denomArray[1][2] = totalFrom(districts, AGGLABELS[4]); 
+		denomArray[1][3] = totalFrom(districts, AGGLABELS[5]); 
 
-		denomArray[2][0] = totalFrom(sDistricts, AGGS.TOPICSINT);
-		denomArray[2][1] = totalFrom(sDistricts, AGGS.TOPICSOC); 
-		denomArray[2][2] = totalFrom(sDistricts, AGGS.TOPICSPASSED); 
-		denomArray[2][3] = totalFrom(sDistricts, AGGS.TOPICSCHAP);
+		denomArray[2][0] = totalFrom(districts, AGGLABELS[6]);
+		denomArray[2][1] = totalFrom(districts, AGGLABELS[7]); 
+		denomArray[2][2] = totalFrom(districts, AGGLABELS[8]); 
+		denomArray[2][3] = totalFrom(districts, AGGLABELS[9]);
 		
 		// make the array inverse cumulative across rows 
 		for ( int j=0; j < 3; ++j ) {
@@ -1039,23 +1056,24 @@ public class BuildSession {
 
 		double[][] distArray = new double[3][4];
 
-		for ( openstatestats.model.District dist: sDistricts) {
+		for ( openstatestats.model.District dist: districts) {
 
-			Map<String, Long> aggregates = dist.getAggregates();
-			distArray[0][0] = aggregates.get(AGGS.RESINT.toString());
+			Long[] values = districts.getAggregate(GROUPLABEL).getValues(dist);
+
+			distArray[0][0] = values[0];
 			distArray[0][1] = 0.0;
 			distArray[0][2] = 0.0;
-			distArray[0][3] = aggregates.get(AGGS.RESADOPTED.toString()); 
+			distArray[0][3] = values[1]; 
 			
-			distArray[1][0] = aggregates.get(AGGS.BILLSINT.toString());
-			distArray[1][1] = aggregates.get(AGGS.BILLSOC.toString()); 
-			distArray[1][2] = aggregates.get(AGGS.BILLSPASSED.toString()); 
-			distArray[1][3] = aggregates.get(AGGS.BILLSCHAP.toString()); 
+			distArray[1][0] = values[2];
+			distArray[1][1] = values[3]; 
+			distArray[1][2] = values[4]; 
+			distArray[1][3] = values[5]; 
 
-			distArray[2][0] = aggregates.get(AGGS.TOPICSINT.toString());
-			distArray[2][1] = aggregates.get(AGGS.TOPICSOC.toString()); 
-			distArray[2][2] = aggregates.get(AGGS.TOPICSPASSED.toString()); 
-			distArray[2][3] = aggregates.get(AGGS.TOPICSCHAP.toString());
+			distArray[2][0] = values[6];
+			distArray[2][1] = values[7]; 
+			distArray[2][2] = values[8]; 
+			distArray[2][3] = values[9];
 				
 			// make the array inverse cumulative across rows 
 			for ( int j=0; j < 3; ++j ) {
@@ -1091,14 +1109,16 @@ public class BuildSession {
 			double partChaptered = num[3] / denom[3]; 
 
 			double LES = (partIntroduced + partOtherChamber + partPassed + partChaptered) * LESMult;
-			dist.getComputations().put("LES", LES);
+			Double[] comps = new Double[COMPLABELS.length];
+			comps[0] = LES;
+			computation.setValues(dist, comps);
 		}
 	}
 	
-	private static double totalFrom( List<openstatestats.model.District> sDistricts, AGGS value) {
+	private static double totalFrom(Districts districts, String label) throws OpenStatsException {
 		double ret = 0.0;
-		for ( openstatestats.model.District dist: sDistricts) {
-			Long iVal = dist.getAggregates().get(value.toString());
+		for ( openstatestats.model.District dist: districts) {
+			Long iVal = districts.getAggregate(GROUPLABEL).getValue(dist, label);
 			ret = ret + iVal;
 		}
 		return ret;
