@@ -170,8 +170,6 @@ public class BuildSession {
 			} else {
 				openstatestats.model.Legislator sLegislator = new openstatestats.model.Legislator();
 				sLegislator.setName(legislator.full_name);
-				sLegislator.setChamber(legislator.chamber);
-				sLegislator.setDistrict(legislator.district);
 				sLegislator.setParty(legislator.party);
 				district = new openstatestats.model.District();
 				district.setChamber(legislator.chamber);

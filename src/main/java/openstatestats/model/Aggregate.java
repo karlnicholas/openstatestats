@@ -4,7 +4,7 @@ import java.util.*;
 
 public class Aggregate<T> {
 
-	private Map<T, Long[]> values = new TreeMap<T, Long[]>();
+	private Map<T, Long[]> values = new LinkedHashMap<T, Long[]>();
 	private String[] labels;
 	
 	public Aggregate() {}

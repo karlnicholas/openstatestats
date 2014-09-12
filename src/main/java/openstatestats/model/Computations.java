@@ -2,7 +2,7 @@ package openstatestats.model;
 
 import java.util.*;
 
-public class Computations<T extends Comparable<T>> {
+public class Computations<T> {
 	private Map<String, Computation<T>> computations = new LinkedHashMap<String, Computation<T>>();
 	private Map<String, ArrayList<String>> descriptions = new LinkedHashMap<String, ArrayList<String>>();
 	private Map<String, String[]> groups = new LinkedHashMap<String, String[]>();

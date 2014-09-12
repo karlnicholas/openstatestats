@@ -1,6 +1,6 @@
 package openstatestats.model;
 
-public class UserData<T extends Comparable<T>> {
+public class UserData<T> {
 	private Aggregates<T> aggregates = new Aggregates<T>();
 	private Computations<T> computations = new Computations<T>();
 
