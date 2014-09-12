@@ -2,7 +2,7 @@ package openstatestats.model;
 
 import java.util.*;
 
-public class Computation<T> {
+public class Computation<T extends Comparable<T>> {
 	private Map<T, Double[]> values = new TreeMap<T, Double[]>();
 	private String[] labels;
 

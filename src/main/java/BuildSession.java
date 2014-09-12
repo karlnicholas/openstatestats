@@ -26,7 +26,8 @@ public class BuildSession {
 		"BILLSINT", "BILLSOC", "BILLSPASSED", "BILLSCHAP", 
 		"TOPICSINT", "TOPICSOC", "TOPICSPASSED", "TOPICSCHAP"
 	};
-	private static String[] COMPLABELS = {"LES"};
+	private static String[] LESLABEL = {"LES"};
+	private static String[] SKEWLABEL = {"SKEWNESS"};
 		
 	static class AuthorStats {
 		public AuthorStats() {
@@ -50,7 +51,6 @@ public class BuildSession {
 	private static TreeSet<String> currentTopics;
 
 	public static void main(String[] args) throws Exception {
-/*		
 		TestAction[] testActions = new TestAction[] {
 				new GATestAction(), 
 				new ARTestAction(), 
@@ -77,10 +77,11 @@ public class BuildSession {
 			Session session = buildSession(testAction);
 			writeCsv(session);
 		}
-*/
+		/*		
 		TestAction testAction = new GATestAction();
 		Session session = buildSession(testAction);
 		writeCsv(session);
+		*/
 	}
 
 /*
@@ -193,6 +194,7 @@ public class BuildSession {
 			}
 		}
 		computeLES(districts);
+		computeSkewness(session);
 		return session;
 	}	
 
@@ -238,7 +240,7 @@ public class BuildSession {
 				@Override
 				public int compare(District o1, District o2) {
 					try {
-						return districts.getComputation(GROUPLABEL).getValue(o2, "LES").compareTo(districts.getComputation(GROUPLABEL).getValue(o1, "LES"));
+						return districts.getComputation(GROUPLABEL).getValue(o2, LESLABEL[0]).compareTo(districts.getComputation(GROUPLABEL).getValue(o1, LESLABEL[0]));
 					} catch (OpenStatsException e) {
 						throw new RuntimeException(e);
 					}
@@ -261,6 +263,9 @@ public class BuildSession {
     	        }
                 writer.writeRow(columns.toArray(sColumns));
             }
+
+            writer.writeHeader(SKEWLABEL[0]);
+            writer.writeRow(session.getComputation(GROUPLABEL).getValue(session, SKEWLABEL[0]).toString());
                 
         }
         finally {
@@ -268,6 +273,22 @@ public class BuildSession {
             	writer.close();
             }
         }
+	}
+	
+	public static void computeSkewness(Session session) throws OpenStatsException {
+		Districts districts = session.getDistricts();
+		Computation<District> computation = districts.getComputation(GROUPLABEL);
+		double[] stats = new double[districts.size()];
+		int i=0;
+		for ( District district: districts ) {
+			Double[] values = computation.getValues(district);
+			stats[i++] = values[0];
+		}
+		Statistics statistics = new Statistics(stats);
+		Computation<Session> compSession = session.createComputation(GROUPLABEL, SKEWLABEL);
+		Double[] values = compSession.createValues(session);
+		values[0] = (3.0*(statistics.getMean() - statistics.getMedian()))/statistics.getStdDev(); 
+		compSession.setValues(session, values);		
 	}
 
 	/**
@@ -1001,7 +1022,7 @@ public class BuildSession {
 	public static void computeLES(Districts districts) throws OpenStatsException {
 				
 //		ArrayList<Long> lidsAll = makeRList();
-		Computation<District> computation = districts.createComputation(GROUPLABEL, COMPLABELS);
+		Computation<District> computation = districts.createComputation(GROUPLABEL, LESLABEL);
 	
 		double LESMult = new Double(districts.size()/4.0);
 
@@ -1109,7 +1130,7 @@ public class BuildSession {
 			double partChaptered = num[3] / denom[3]; 
 
 			double LES = (partIntroduced + partOtherChamber + partPassed + partChaptered) * LESMult;
-			Double[] comps = new Double[COMPLABELS.length];
+			Double[] comps = new Double[LESLABEL.length];
 			comps[0] = LES;
 			computation.setValues(dist, comps);
 		}
